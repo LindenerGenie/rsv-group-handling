@@ -1,0 +1,285 @@
+<template>
+  <div id="app">
+    <header>
+      <h1>User Group Management</h1>
+    </header>
+    <main>
+      <section class="file-upload">
+        <input type="file" @change="uploadCSV" accept=".csv" id="csv-upload">
+        <label for="csv-upload" class="button">Upload CSV</label>
+      </section>
+
+      <section class="filters">
+        <input v-model="search" placeholder="Search..." class="input">
+        <input v-model="departmentFilter" placeholder="Filter by department" class="input">
+      </section>
+
+      <section class="user-table">
+        <div class="table-header">
+          <label class="checkbox-container">
+            <input type="checkbox" v-model="selectAll" @change="toggleSelectAll">
+            <span class="checkmark"></span>
+          </label>
+          <span>First Name</span>
+          <span>Last Name</span>
+          <span>Email</span>
+          <span>Departments</span>
+          <span>Groups</span>
+        </div>
+        <div class="table-body">
+          <div v-for="user in filteredUsers" :key="user.email" class="table-row">
+            <label class="checkbox-container">
+              <input type="checkbox" v-model="selectedUsers" :value="user.firstname + '_' + user.lastname + '_' + user.email">
+              <span class="checkmark"></span>
+            </label>
+            <span>{{ user.firstname }}</span>
+            <span>{{ user.lastname }}</span>
+            <span>{{ user.email }}</span>
+            <span>{{ user.departments }}</span>
+            <span>{{ user.groups }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="group-management">
+        <div class="group-add">
+          <input v-model="groupToAdd" placeholder="Add group" class="input">
+          <button @click="addGroup" class="button">Add Group</button>
+        </div>
+        <div class="group-remove">
+          <select v-model="groupToRemove" class="select">
+            <option value="">Select group to remove</option>
+            <option v-for="group in allGroups" :key="group" :value="group">{{ group }}</option>
+          </select>
+          <button @click="removeGroup" class="button">Remove Group</button>
+        </div>
+      </section>
+
+      <section class="export">
+        <button @click="exportCSV" class="button">Export CSV</button>
+      </section>
+    </main>
+  </div>
+</template>
+
+<script>
+import axios from 'axios';
+
+export default {
+  data() {
+    return {
+      users: [],
+      search: '',
+      departmentFilter: '',
+      selectedUsers: [],
+      groupToAdd: '',
+      groupToRemove: '',
+      selectAll: false,
+    };
+  },
+  computed: {
+    filteredUsers() {
+      const searchLower = this.search.toLowerCase();
+      const departmentLower = this.departmentFilter.toLowerCase();
+      return this.users.filter(user => {
+        const departmentMatch = departmentLower === '' ||
+          (user.departments && user.departments.toLowerCase().includes(departmentLower));
+        const searchMatch = searchLower === '' ||
+          user.firstname.toLowerCase().includes(searchLower) ||
+          user.lastname.toLowerCase().includes(searchLower) ||
+          user.email.toLowerCase().includes(searchLower);
+        return departmentMatch && searchMatch;
+      });
+    },
+    allGroups() {
+      const groups = new Set();
+      this.users.forEach(user => {
+        if (user.groups) {
+          user.groups.split(';').forEach(group => groups.add(group));
+        }
+      });
+      return Array.from(groups);
+    },
+  },
+  methods: {
+    async uploadCSV(event) {
+      const file = event.target.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      await axios.post('http://localhost:5000/upload', formData);
+      this.fetchUsers();
+    },
+    async fetchUsers() {
+      const response = await axios.get(`http://localhost:5000/users`);
+      this.users = response.data;
+    },
+    async addGroup() {
+      await axios.post('http://localhost:5000/update-groups', {
+        userIds: this.selectedUsers,
+        groupsToAdd: [this.groupToAdd],
+        groupsToRemove: [],
+      });
+      this.groupToAdd = '';
+      this.fetchUsers();
+    },
+    async removeGroup() {
+      await axios.post('http://localhost:5000/update-groups', {
+        userIds: this.selectedUsers,
+        groupsToAdd: [],
+        groupsToRemove: [this.groupToRemove],
+      });
+      this.groupToRemove = '';
+      this.fetchUsers();
+    },
+    async exportCSV() {
+      const response = await axios.get('http://localhost:5000/export', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'exported_users.csv');
+      document.body.appendChild(link);
+      link.click();
+    },
+    toggleSelectAll() {
+      if (this.selectAll) {
+        this.selectedUsers = this.filteredUsers.map(user => `${user.firstname}_${user.lastname}_${user.email}`);
+      } else {
+        this.selectedUsers = [];
+      }
+    },
+  },
+  mounted() {
+    this.fetchUsers();
+  },
+  watch: {
+    selectedUsers() {
+      this.selectAll = this.selectedUsers.length === this.filteredUsers.length;
+    },
+  },
+};
+</script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f0f0f0;
+}
+
+#app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  background-color: #3498db;
+  color: white;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+h1 {
+  margin: 0;
+}
+
+.button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.button:hover {
+  background-color: #2980b9;
+}
+
+.input, .select {
+  padding: 10px;
+  margin: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.file-upload, .filters, .group-management, .export {
+  margin-bottom: 20px;
+}
+
+.user-table {
+  background-color: white;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.table-header, .table-row {
+  display: grid;
+  grid-template-columns: 50px repeat(5, 1fr);
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.table-header {
+  font-weight: bold;
+  background-color: #f8f8f8;
+}
+
+.checkbox-container {
+  display: block;
+  position: relative;
+  padding-left: 35px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  font-size: 22px;
+  user-select: none;
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 25px;
+  width: 25px;
+  background-color: #eee;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+  background-color: #ccc;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: #2196F3;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.checkbox-container .checkmark:after {
+  left: 9px;
+  top: 5px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+</style>

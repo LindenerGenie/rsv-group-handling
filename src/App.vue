@@ -1,48 +1,67 @@
 <template>
-  <div id="app">
-    <input type="file" @change="uploadCSV" accept=".csv">
+  <div id="app" class="container mt-4">
+    <h1 class="mb-4">User Group Management</h1>
 
-    <div>
-      <input v-model="search" placeholder="Search...">
-      <input v-model="departmentFilter" placeholder="Filter by department">
+    <div class="mb-3">
+      <label for="csvFile" class="form-label">Upload CSV File</label>
+      <input type="file" class="form-control" id="csvFile" @change="uploadCSV" accept=".csv">
     </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Select</th>
-          <th>First Name</th>
-          <th>Last Name</th>
-          <th>Email</th>
-          <th>Departments</th>
-          <th>Groups</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="user in filteredUsers" :key="user.email">
-          <td><input type="checkbox" v-model="selectedUsers" :value="user.firstname + '_' + user.lastname + '_' + user.email"></td>
-          <td>{{ user.firstname }}</td>
-          <td>{{ user.lastname }}</td>
-          <td>{{ user.email }}</td>
-          <td>{{ user.departments }}</td>
-          <td>{{ user.groups }}</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div>
-      <input v-model="groupToAdd" placeholder="Add group">
-      <button @click="addGroup">Add Group</button>
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <input v-model="search" class="form-control" placeholder="Search...">
+      </div>
+      <div class="col-md-6">
+        <input v-model="departmentFilter" class="form-control" placeholder="Filter by department">
+      </div>
     </div>
 
-    <div>
-      <select v-model="groupToRemove">
-        <option v-for="group in allGroups" :key="group" :value="group">{{ group }}</option>
-      </select>
-      <button @click="removeGroup">Remove Group</button>
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead class="table-dark">
+          <tr>
+            <th><input type="checkbox" @change="selectAll" v-model="allSelected"></th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Email</th>
+            <th>Departments</th>
+            <th>Groups</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="user in filteredUsers" :key="user.email">
+            <td>
+              <input type="checkbox" v-model="selectedUsers" :value="user.firstname + '_' + user.lastname + '_' + user.email">
+            </td>
+            <td>{{ user.firstname }}</td>
+            <td>{{ user.lastname }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.departments }}</td>
+            <td>{{ user.groups }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <button @click="exportCSV">Export CSV</button>
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <div class="input-group">
+          <input v-model="groupToAdd" class="form-control" placeholder="Add group">
+          <button class="btn btn-primary" @click="addGroup">Add Group</button>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="input-group">
+          <select v-model="groupToRemove" class="form-select">
+            <option value="">Select group to remove</option>
+            <option v-for="group in allGroups" :key="group" :value="group">{{ group }}</option>
+          </select>
+          <button class="btn btn-danger" @click="removeGroup">Remove Group</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-success" @click="exportCSV">Export CSV</button>
   </div>
 </template>
 
@@ -58,6 +77,7 @@ export default {
       selectedUsers: [],
       groupToAdd: '',
       groupToRemove: '',
+      allSelected: false,
     };
   },
   computed: {
@@ -97,6 +117,7 @@ export default {
       this.users = response.data;
     },
     async addGroup() {
+      if (!this.groupToAdd) return;
       await axios.post('http://localhost:5000/update-groups', {
         userIds: this.selectedUsers,
         groupsToAdd: [this.groupToAdd],
@@ -106,6 +127,7 @@ export default {
       this.fetchUsers();
     },
     async removeGroup() {
+      if (!this.groupToRemove) return;
       await axios.post('http://localhost:5000/update-groups', {
         userIds: this.selectedUsers,
         groupsToAdd: [],
@@ -123,9 +145,24 @@ export default {
       document.body.appendChild(link);
       link.click();
     },
+    selectAll() {
+      if (this.allSelected) {
+        this.selectedUsers = this.filteredUsers.map(user => `${user.firstname}_${user.lastname}_${user.email}`);
+      } else {
+        this.selectedUsers = [];
+      }
+    },
   },
   mounted() {
     this.fetchUsers();
+  },
+  watch: {
+    search() {
+      this.fetchUsers();
+    },
+    departmentFilter() {
+      this.fetchUsers();
+    },
   },
 };
 </script>
