@@ -41,7 +41,8 @@ def update_groups():
     groups_to_remove = data['groupsToRemove']
 
     for user in users_data:
-        if f"{user['firstname']}_{user['lastname']}_{user['email']}" in user_ids:
+        user_id = f"{user['firstname']}_{user['lastname']}_{user['email']}"
+        if user_id in user_ids:
             current_groups = set(user.get('groups', '').split(';')) if user.get('groups') else set()
             current_groups.update(groups_to_add)
             current_groups.difference_update(groups_to_remove)
@@ -56,13 +57,12 @@ def export_csv():
     writer.writeheader()
     for user in users_data:
         if 'groups' in user and user['groups']:
-            user['groups'] = f"\"{user['groups']}\""
+          user['groups'] = f"\"{user['groups']}\"" #wrap in ""
         writer.writerow(user)
     return output.getvalue(), 200, {
         'Content-Type': 'text/csv',
         'Content-Disposition': 'attachment; filename=exported_users.csv'
     }
-
 
 @app.route('/groups', methods=['GET'])
 def get_groups():
@@ -80,8 +80,9 @@ def serve(path):
     else:
         return send_from_directory(app.static_folder, 'index.html')
 
-
-# ... (keep other routes as they are)
+@app.route('/test')
+def test():
+    return "Hello, World!"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

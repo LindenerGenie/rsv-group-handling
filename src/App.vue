@@ -186,6 +186,7 @@ export default {
     },
     filterUsers() {
       this.getUsers();
+      this.clearSelections();
     },
     changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
@@ -236,11 +237,18 @@ export default {
           console.error(error);
         });
     },
+    clearSelections() {
+      this.selectedUsers = [];
+      this.selectAll = false;
+    },
   },
   watch: {
     search: debounce(function() {
-      this.getUsers();
+      this.filterUsers();
     }, 300),
+    selectedDepartment() {
+      this.filterUsers();
+    }
   },
   created() {
     this.getUsers();
