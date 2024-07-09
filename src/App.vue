@@ -21,11 +21,11 @@
       <thead>
         <tr>
           <th><input type="checkbox" v-model="selectAll" @change="toggleSelectAll" /></th>
-          <th>First Name</th>
-          <th>Last Name</th>
-          <th>Email</th>
-          <th>Departments</th>
-          <th>Groups</th>
+          <th @click="sortUsers('firstname')">First Name</th>
+          <th @click="sortUsers('lastname')">Last Name</th>
+          <th @click="sortUsers('email')">Email</th>
+          <th @click="sortUsers('departments')">Departments</th>
+          <th @click="sortUsers('groups')">Groups</th>
         </tr>
       </thead>
       <tbody>
@@ -113,15 +113,17 @@ export default {
       groupsToRemove: [],
       newGroup: '',
       availableGroups: [],
+      sortColumn: '',
+      sortDirection: 'asc', // or 'desc'
     };
   },
   computed: {
     filteredUsers() {
       return this.users.filter(user => {
         const searchMatch = user.firstname.toLowerCase().includes(this.search.toLowerCase()) ||
-                            user.lastname.toLowerCase().includes(this.search.toLowerCase()) ||
-                            user.email.toLowerCase().includes(this.search.toLowerCase()) ||
-                            user.departments.toLowerCase().includes(this.search.toLowerCase());
+        user.lastname.toLowerCase().includes(this.search.toLowerCase()) ||
+        user.email.toLowerCase().includes(this.search.toLowerCase()) ||
+        user.departments.toLowerCase().includes(this.search.toLowerCase());
         const departmentMatch = this.selectedDepartment === '' || user.departments.includes(this.selectedDepartment);
         return searchMatch && departmentMatch;
       });
@@ -150,14 +152,14 @@ export default {
       const formData = new FormData();
       formData.append('file', file);
       axios.post('/upload', formData)
-        .then(response => {
-          console.log(response.data.message);
-          this.getUsers();
-          this.getGroups();
-        })
-        .catch(error => {
-          console.error(error);
-        });
+      .then(response => {
+        console.log(response.data.message);
+        this.getUsers();
+        this.getGroups();
+      })
+      .catch(error => {
+        console.error(error);
+      });
     },
     getUsers() {
       axios.get('/users', {
@@ -166,28 +168,46 @@ export default {
           department: this.selectedDepartment,
         },
       })
-        .then(response => {
-          this.users = response.data;
-          this.departments = [...new Set(this.users.flatMap(user => user.departments.split(',')))];
-          this.resetPage();
-        })
-        .catch(error => {
-          console.error(error);
-        });
+      .then(response => {
+        this.users = response.data;
+        this.departments = [...new Set(this.users.flatMap(user => user.departments.split(',')))];
+        this.resetPage();
+      })
+      .catch(error => {
+        console.error(error);
+      });
     },
     getGroups() {
       axios.get('/groups')
-        .then(response => {
-          this.availableGroups = response.data;
-        })
-        .catch(error => {
-          console.error(error);
-        });
+      .then(response => {
+        this.availableGroups = response.data;
+      })
+      .catch(error => {
+        console.error(error);
+      });
     },
     filterUsers() {
       this.getUsers();
       this.clearSelections();
     },
+
+    // existing methods
+    sortUsers(column) {
+      if (this.sortColumn === column) {
+        // If the same column is clicked, toggle the direction
+        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.sortColumn = column;
+        this.sortDirection = 'asc';
+      }
+
+      this.users.sort((a, b) => {
+        if (a[column] < b[column]) return this.sortDirection === 'asc' ? -1 : 1;
+        if (a[column] > b[column]) return this.sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    },
+
     changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
@@ -206,16 +226,16 @@ export default {
         groupsToAdd: this.groupsToAdd,
         groupsToRemove: this.groupsToRemove,
       })
-        .then(response => {
-          console.log(response.data.message);
-          this.getUsers();
-          this.showGroupModal = false;
-          this.groupsToAdd = [];
-          this.groupsToRemove = [];
-        })
-        .catch(error => {
-          console.error(error);
-        });
+      .then(response => {
+        console.log(response.data.message);
+        this.getUsers();
+        this.showGroupModal = false;
+        this.groupsToAdd = [];
+        this.groupsToRemove = [];
+      })
+      .catch(error => {
+        console.error(error);
+      });
     },
     addNewGroup() {
       if (this.newGroup && !this.availableGroups.includes(this.newGroup)) {
@@ -226,16 +246,16 @@ export default {
     },
     exportCSV() {
       axios.get('/export', { responseType: 'blob' })
-        .then(response => {
-          const blob = new Blob([response.data], { type: 'text/csv' });
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
-          link.download = 'exported_users.csv';
-          link.click();
-        })
-        .catch(error => {
-          console.error(error);
-        });
+      .then(response => {
+        const blob = new Blob([response.data], { type: 'text/csv' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'exported_users.csv';
+        link.click();
+      })
+      .catch(error => {
+        console.error(error);
+      });
     },
     clearSelections() {
       this.selectedUsers = [];
