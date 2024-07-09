@@ -1,4 +1,6 @@
-<template>
+function exportCSV:
+    filteredUsers = filter users where firstname, lastname, and email are not empty
+    proceed with CSV export logic using filteredUsers<template>
   <div id="app" class="container">
     <h1>User Management</h1>
     <div class="mb-3">
@@ -224,6 +226,7 @@ export default {
 
     // Modify the sortUsers method to handle date sorting
     sortUsers(column) {
+      console.log('Sorting by:', column);
       if (this.sortColumn === column) {
         this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
       } else {
@@ -238,7 +241,11 @@ export default {
           return this.sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
         });
       } else {
-        // Existing sorting logic for other columns
+        this.users.sort((a, b) => {
+          const valueA = a[column].toLowerCase();
+          const valueB = b[column].toLowerCase();
+          return this.sortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+        });
       }
     },
 

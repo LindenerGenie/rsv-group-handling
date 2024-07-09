@@ -2,7 +2,7 @@ FROM node:14 as build-stage
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
-RUN npm install bootstrap
+RUN npm install bootstrap xlsx express
 COPY . .
 RUN npm run build
 

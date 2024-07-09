@@ -1,5 +1,7 @@
-from flask import Flask, send_from_directory, jsonify, request
+from flask import Flask, send_file, send_from_directory, jsonify, request
 from flask_cors import CORS
+from openpyxl import Workbook, load_workbook
+import pandas as pd
 import csv
 import io
 import os
@@ -11,14 +13,36 @@ users_data = []
 column_order = []
 
 @app.route('/upload', methods=['POST'])
-def upload_csv():
-    global users_data, column_order
+def upload_xlsx():
+    if 'file' not in request.files:
+        return 'No file part', 400
     file = request.files['file']
-    stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-    csv_reader = csv.DictReader(stream)
-    column_order = csv_reader.fieldnames
-    users_data = list(csv_reader)
-    return jsonify({"message": "CSV uploaded successfully"})
+    if file.filename == '':
+        return 'No selected file', 400
+    wb = load_workbook(file)
+    ws = wb.active
+    global users_data
+    users_data = []
+    # Include 'created' and 'groups' in the expected keys
+    default_keys = ['firstname', 'lastname', 'email', 'departments', 'created', 'groups']  # Updated expected keys
+
+    # Read the first row to get column headers
+    headers = [cell for cell in next(ws.iter_rows(min_row=1, max_row=1, values_only=True))]
+
+    # Create a mapping of headers to their index
+    header_index = {header: index for index, header in enumerate(headers)}
+
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        user = {key: '' for key in default_keys}  # Initialize with default keys and empty values
+
+        # Update user dictionary with values from row, using header_index for correct mapping
+        for key in default_keys:
+            if key in header_index:  # Check if the key exists in the header
+                value_index = header_index[key]
+                user[key] = row[value_index] if value_index < len(row) else ''
+
+        users_data.append(user)
+    return jsonify(success=True), 200
 
 @app.route('/users', methods=['GET'])
 def get_users():
@@ -26,10 +50,15 @@ def get_users():
     department = request.args.get('department', '')
     filtered_users = []
     for user in users_data:
-        if (search in user['lastname'].lower() or
-            search in user['firstname'].lower() or
-            search in user['email'].lower() or
-            (department and department in user.get('departments', '').split(','))):
+        # Use .get() with default empty string to avoid KeyError
+        lastname = user.get('lastname', '').lower()
+        firstname = user.get('firstname', '').lower()
+        email = user.get('email', '').lower()
+        departments = user.get('departments', '').split(',')
+        if (search in lastname or
+            search in firstname or
+            search in email or
+            (department and department in departments)):
             filtered_users.append(user)
     return jsonify(filtered_users)
 
@@ -51,18 +80,40 @@ def update_groups():
     return jsonify({"message": "Groups updated successfully"})
 
 @app.route('/export', methods=['GET'])
+def export_xlsx():
+    try:
+        wb = Workbook()
+        ws = wb.active
+        ws.append(column_order)  # Assuming column_order contains the headers
+        filtered_users = [user for user in users_data if user.get('firstname') and user.get('lastname') and user.get('email')]
+        for user in filtered_users:
+            ws.append([user.get(col, '') for col in column_order])
+        filename = "exported_users.xlsx"
+        wb.save(filename)
+        return send_file(filename, as_attachment=True, attachment_filename=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as e:
+        # Log the exception e
+        return jsonify({"error": "An error occurred while exporting users."}), 500
+
+@app.route('/export-csv', methods=['GET'])
 def export_csv():
-    output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=column_order, delimiter='#')
-    writer.writeheader()
-    for user in users_data:
-        #if 'groups' in user and user['groups']:
-        #  user['groups'] = f"\"{user['groups']}\"" #wrap in ""
-        writer.writerow(user)
-    return output.getvalue(), 200, {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': 'attachment; filename=exported_users.csv'
-    }
+    try:
+        filtered_users = [user for user in users_data if user.get('firstname') and user.get('lastname') and user.get('email')]
+        csvContent = "data:text/csv;charset=utf-8,"
+        csvContent += "First Name,Last Name,Email\n"  # CSV Header
+        for user in filtered_users:
+            row = f"{user.get('firstname')},{user.get('lastname')},{user.get('email')}"
+            csvContent += row + "\n"
+        encodedUri = encodeURI(csvContent)
+        link = document.createElement("a")
+        link.setAttribute("href", encodedUri)
+        link.setAttribute("download", "exported_users.csv")
+        document.body.appendChild(link)  # Required for FF
+        link.click()  # Trigger download
+        return jsonify(success=True), 200
+    except Exception as e:
+        # Log the exception e
+        return jsonify({"error": "An error occurred while exporting users."}), 500
 
 @app.route('/groups', methods=['GET'])
 def get_groups():
@@ -71,6 +122,16 @@ def get_groups():
         if user.get('groups'):
             all_groups.update(user['groups'].split(';'))
     return jsonify(list(all_groups))
+
+@app.route('/users')
+def users():
+    # Adjust the path to your XLSX file
+    file_path = 'path/to/your/users.xlsx'
+    # Read the XLSX file into a DataFrame
+    df = pd.read_excel(file_path)
+    # Convert the DataFrame to a list of dictionaries for JSON response
+    data = df.to_dict(orient='records')
+    return jsonify(data)
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
