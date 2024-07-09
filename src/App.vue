@@ -12,13 +12,13 @@
       <div class="mb-3">
         <select v-model="selectedDepartment" @change="filterUsers" class="form-control">
           <option value="">All Departments</option>
-          <option v-for="department in departments" :key="department" :value="department">{{ department }}</option>
+          <option v-for="department in sortedDepartments" :key="department" :value="department">{{ department }}</option>
         </select>
       </div>
       <div class="form-group">
         <select v-model="selectedGroup" id="groupFilter" class="form-control">
           <option value="">All Groups</option>
-          <option v-for="group in availableGroups" :key="group" :value="group">{{ group }}</option>
+          <option v-for="group in sortedAvailableGroups" :key="group" :value="group">{{ group }}</option>
         </select>
       </div>
     </div>
@@ -78,7 +78,7 @@
             <div class="form-group">
               <label>Add Groups:</label>
               <select v-model="groupsToAdd" multiple class="form-control">
-                <option v-for="group in availableGroups" :key="group" :value="group">{{ group }}</option>
+                <option v-for="group in sortedAvailableGroups" :key="group" :value="group">{{ group }}</option>
               </select>
             </div>
             <div class="form-group">
@@ -89,7 +89,7 @@
             <div class="form-group">
               <label>Remove Groups:</label>
               <select v-model="groupsToRemove" multiple class="form-control">
-                <option v-for="group in currentGroups" :key="group" :value="group">{{ group }}</option>
+                <option v-for="group in sortedCurrentGroups" :key="group" :value="group">{{ group }}</option>
               </select>
             </div>
           </div>
@@ -148,6 +148,17 @@ export default {
     },
     totalPages() {
       return Math.ceil(this.filteredUsers.length / this.itemsPerPage);
+    },
+    sortedDepartments() {
+      return this.departments.sort();
+    },
+    sortedAvailableGroups() {
+      return this.availableGroups.sort();
+    },
+    sortedCurrentGroups() {
+      // Assuming `currentGroups` is a data property that holds the groups a user currently has.
+      // This will also need to be computed dynamically similar to `availableGroups`.
+      return this.currentGroups.sort();
     },
     visiblePages() {
       let start = Math.max(1, this.currentPage - 2);
