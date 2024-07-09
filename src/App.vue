@@ -4,14 +4,23 @@
     <div class="mb-3">
       <input type="file" @change="uploadCSV" />
     </div>
-    <div class="mb-3">
-      <input type="text" v-model="search" placeholder="Search by name, email, or department" class="form-control" />
-    </div>
-    <div class="mb-3">
-      <select v-model="selectedDepartment" @change="filterUsers" class="form-control">
-        <option value="">All Departments</option>
-        <option v-for="department in departments" :key="department" :value="department">{{ department }}</option>
-      </select>
+    <div id="searcharea">
+      <label>Filter Users</label>
+      <div class="mb-3">
+        <input type="text" v-model="search" placeholder="Search by name, email, or department" class="form-control" />
+      </div>
+      <div class="mb-3">
+        <select v-model="selectedDepartment" @change="filterUsers" class="form-control">
+          <option value="">All Departments</option>
+          <option v-for="department in departments" :key="department" :value="department">{{ department }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <select v-model="selectedGroup" id="groupFilter" class="form-control">
+          <option value="">All Groups</option>
+          <option v-for="group in availableGroups" :key="group" :value="group">{{ group }}</option>
+        </select>
+      </div>
     </div>
     <div class="mb-3">
       <button @click="showGroupModal = true" class="btn btn-primary" :disabled="selectedUsers.length === 0">Manage Groups</button>
@@ -117,6 +126,7 @@ export default {
       availableGroups: [],
       sortColumn: '',
       sortDirection: 'asc', // or 'desc'
+      selectedGroup: '',
     };
   },
   computed: {
@@ -127,7 +137,8 @@ export default {
         user.email.toLowerCase().includes(this.search.toLowerCase()) ||
         user.departments.toLowerCase().includes(this.search.toLowerCase());
         const departmentMatch = this.selectedDepartment === '' || user.departments.includes(this.selectedDepartment);
-        return searchMatch && departmentMatch;
+        const groupMatch = this.selectedGroup === '' || user.groups.split(';').includes(this.selectedGroup);
+        return searchMatch && departmentMatch && groupMatch;
       });
     },
     paginatedUsers() {
@@ -194,7 +205,7 @@ export default {
     },
 
     // Method to format the 'created' date
-      formatCreatedDate(dateString) {
+    formatCreatedDate(dateString) {
       if (!dateString) return ''; // Return empty if dateString is empty
       const [day, month, year] = dateString.split('.'); // Assuming the original format is 'yyyy-mm-dd'
       return `${day}.${month}.${year}`; // Convert to 'dd.mm.yyyy'
@@ -292,6 +303,11 @@ export default {
 <style>
 #app {
   margin-top: 20px;
+}
+#searcharea {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 1em;
 }
 .modal {
   background-color: rgba(0, 0, 0, 0.5);
