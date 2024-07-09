@@ -24,6 +24,7 @@
           <th @click="sortUsers('firstname')">First Name</th>
           <th @click="sortUsers('lastname')">Last Name</th>
           <th @click="sortUsers('email')">Email</th>
+          <th @click="sortUsers('created')">Created</th>
           <th @click="sortUsers('departments')">Departments</th>
           <th @click="sortUsers('groups')">Groups</th>
         </tr>
@@ -34,6 +35,7 @@
           <td>{{ user.firstname }}</td>
           <td>{{ user.lastname }}</td>
           <td>{{ user.email }}</td>
+          <td>{{ formatCreatedDate(user.created) }}</td>
           <td>{{ user.departments }}</td>
           <td>{{ user.groups }}</td>
         </tr>
@@ -191,21 +193,31 @@ export default {
       this.clearSelections();
     },
 
-    // existing methods
+    // Method to format the 'created' date
+      formatCreatedDate(dateString) {
+      if (!dateString) return ''; // Return empty if dateString is empty
+      const [day, month, year] = dateString.split('.'); // Assuming the original format is 'yyyy-mm-dd'
+      return `${day}.${month}.${year}`; // Convert to 'dd.mm.yyyy'
+    },
+
+    // Modify the sortUsers method to handle date sorting
     sortUsers(column) {
       if (this.sortColumn === column) {
-        // If the same column is clicked, toggle the direction
         this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
       } else {
         this.sortColumn = column;
         this.sortDirection = 'asc';
       }
-
-      this.users.sort((a, b) => {
-        if (a[column] < b[column]) return this.sortDirection === 'asc' ? -1 : 1;
-        if (a[column] > b[column]) return this.sortDirection === 'asc' ? 1 : -1;
-        return 0;
-      });
+      if (column === 'created') {
+        this.users.sort((a, b) => {
+          // Parse the dates from 'dd.mm.yyyy' to 'yyyy-mm-dd' for correct comparison
+          const dateA = a.created ? new Date(a.created.split('.').reverse().join('-')) : new Date(0);
+          const dateB = b.created ? new Date(b.created.split('.').reverse().join('-')) : new Date(0);
+          return this.sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+        });
+      } else {
+        // Existing sorting logic for other columns
+      }
     },
 
     changePage(page) {
