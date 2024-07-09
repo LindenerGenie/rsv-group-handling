@@ -53,11 +53,11 @@ def update_groups():
 @app.route('/export', methods=['GET'])
 def export_csv():
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=column_order)
+    writer = csv.DictWriter(output, fieldnames=column_order, delimiter='#')
     writer.writeheader()
     for user in users_data:
-        if 'groups' in user and user['groups']:
-          user['groups'] = f"\"{user['groups']}\"" #wrap in ""
+        #if 'groups' in user and user['groups']:
+        #  user['groups'] = f"\"{user['groups']}\"" #wrap in ""
         writer.writerow(user)
     return output.getvalue(), 200, {
         'Content-Type': 'text/csv',
