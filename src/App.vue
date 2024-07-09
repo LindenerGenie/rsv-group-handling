@@ -284,4 +284,7 @@ export default {
 .modal {
   background-color: rgba(0, 0, 0, 0.5);
 }
+thead th {
+  cursor: pointer;
+}
 </style>
