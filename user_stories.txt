@@ -1,0 +1,18 @@
+
+- Nutzerdaten sind in CSV Datei enthalten die Nutzerdaten enthält. - In der CSV sind viele Spalten: - 'firstname', 'lastname', 'email' columns identify a User - other relevant columns are - 'departments'. Each user might have none to multiple departments assigned, split by ',' - 'group's. Each user might have none to multiple groups, split by ';' As a admin I want to have the ability to edit groups for a user to assign additional or delete already assigned groups for a user to admin the group assignment for a user. As a admin I want to have a listing of user data from the csv to see which groups departments are currently assigned to users As a admin I want to filter the listing by lastname, email, firstname, department also allowing for fuzzy search. As a admin I want to select a subset of listed users to add or remove groups to admister groups based on department or indivitual sub groups As a admin I want to export the edited data as csv to import it to an external system. All columns of the input data (relevant ones and passive columns) needs to be part of the export in the same order of columns. for technical reasons the csv file contains a lot of columns that are not relevant for the application. They still needs to be part of the exported file in correct column order. As a admin I want to be able to when adding groups to a user selection to be able to create new groups on the fly while still be able to select groups that are already present in the data. as a datenschutzbeauftrager sollen keine Daten persistent gespeichert werden. As a deployment manager I want to have a docker deployable web application for this application to have it easy to deploy it to nontechnical admins. as a developer i want to make a easy to maintain and light system and use engines when it make it easier
+- Nutzerdaten sind in CSV Datei enthalten die Nutzerdaten enthält.
+- In der CSV sind viele Spalten:
+  - 'firstname', 'lastname', 'email' columns identify a User
+  - other relevant columns are
+    - 'departments'. Each user might have none to multiple departments assigned, split by ','
+    - 'group's. Each user might have none to multiple groups, split by ';'
+
+As a admin I want to have the ability to edit groups for a user to assign additional or delete already assigned groups for a user to admin the group assignment for a user.
+As a admin I want to have a listing of user data from the csv to see which groups departments are currently assigned to users
+As a admin I want to filter the listing by lastname, email, firstname, department also allowing for fuzzy search.
+As a admin I want to select a subset of listed users to add or remove groups to admister groups based on department or indivitual sub groups
+As a admin I want to export the edited data as csv to import it to an external system. All columns of the input data (relevant ones and passive columns) needs to be part of the export in the same order of columns. for technical reasons the csv file contains a lot of columns that are not relevant for the application. They still needs to be part of the exported file in correct column order.
+As a admin I want to be able to when adding groups to a user selection to be able to create new groups on the fly while still be able to select groups that are already present in the data.
+as a datenschutzbeauftrager sollen keine Daten persistent gespeichert werden.
+As a deployment manager I want to have a docker deployable web application for this application to have it easy to deploy it to nontechnical admins.
+as a developer i want to make a easy to maintain and light system and use engines when it make it easier
