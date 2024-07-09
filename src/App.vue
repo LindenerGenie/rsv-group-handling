@@ -1,168 +1,259 @@
 <template>
-  <div id="app" class="container mt-4">
-    <h1 class="mb-4">User Group Management</h1>
-
+  <div id="app" class="container">
+    <h1>User Management</h1>
     <div class="mb-3">
-      <label for="csvFile" class="form-label">Upload CSV File</label>
-      <input type="file" class="form-control" id="csvFile" @change="uploadCSV" accept=".csv">
+      <input type="file" @change="uploadCSV" />
     </div>
-
-    <div class="row mb-3">
-      <div class="col-md-6">
-        <input v-model="search" class="form-control" placeholder="Search...">
-      </div>
-      <div class="col-md-6">
-        <input v-model="departmentFilter" class="form-control" placeholder="Filter by department">
-      </div>
+    <div class="mb-3">
+      <input type="text" v-model="search" placeholder="Search by name, email, or department" class="form-control" />
     </div>
-
-    <div class="table-responsive">
-      <table class="table table-striped table-hover">
-        <thead class="table-dark">
-          <tr>
-            <th><input type="checkbox" @change="selectAll" v-model="allSelected"></th>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>Email</th>
-            <th>Departments</th>
-            <th>Groups</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in filteredUsers" :key="user.email">
-            <td>
-              <input type="checkbox" v-model="selectedUsers" :value="user.firstname + '_' + user.lastname + '_' + user.email">
-            </td>
-            <td>{{ user.firstname }}</td>
-            <td>{{ user.lastname }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.departments }}</td>
-            <td>{{ user.groups }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="mb-3">
+      <select v-model="selectedDepartment" @change="filterUsers" class="form-control">
+        <option value="">All Departments</option>
+        <option v-for="department in departments" :key="department" :value="department">{{ department }}</option>
+      </select>
     </div>
+    <div class="mb-3">
+      <button @click="showGroupModal = true" class="btn btn-primary" :disabled="selectedUsers.length === 0">Manage Groups</button>
+      <button @click="exportCSV" class="btn btn-success ml-2">Export CSV</button>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th><input type="checkbox" v-model="selectAll" @change="toggleSelectAll" /></th>
+          <th>First Name</th>
+          <th>Last Name</th>
+          <th>Email</th>
+          <th>Departments</th>
+          <th>Groups</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="user in paginatedUsers" :key="user.email">
+          <td><input type="checkbox" v-model="selectedUsers" :value="user" /></td>
+          <td>{{ user.firstname }}</td>
+          <td>{{ user.lastname }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.departments }}</td>
+          <td>{{ user.groups }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <nav aria-label="Page navigation">
+      <ul class="pagination justify-content-center">
+        <li class="page-item" :class="{ disabled: currentPage === 1 }">
+          <a class="page-link" href="#" @click.prevent="changePage(currentPage - 1)">Previous</a>
+        </li>
+        <li v-for="page in visiblePages" :key="page" class="page-item" :class="{ active: currentPage === page }">
+          <a class="page-link" href="#" @click.prevent="changePage(page)">{{ page }}</a>
+        </li>
+        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+          <a class="page-link" href="#" @click.prevent="changePage(currentPage + 1)">Next</a>
+        </li>
+      </ul>
+    </nav>
 
-    <div class="row mb-3">
-      <div class="col-md-6">
-        <div class="input-group">
-          <input v-model="groupToAdd" class="form-control" placeholder="Add group">
-          <button class="btn btn-primary" @click="addGroup">Add Group</button>
+    <!-- Group Management Modal -->
+    <div v-if="showGroupModal" class="modal" tabindex="-1" role="dialog" style="display: block;">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Manage Groups</h5>
+            <button type="button" class="close" @click="showGroupModal = false">
+              <span>&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Add Groups:</label>
+              <select v-model="groupsToAdd" multiple class="form-control">
+                <option v-for="group in availableGroups" :key="group" :value="group">{{ group }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>New Group:</label>
+              <input v-model="newGroup" class="form-control" placeholder="Enter new group name" />
+              <button @click="addNewGroup" class="btn btn-secondary mt-2">Add New Group</button>
+            </div>
+            <div class="form-group">
+              <label>Remove Groups:</label>
+              <select v-model="groupsToRemove" multiple class="form-control">
+                <option v-for="group in currentGroups" :key="group" :value="group">{{ group }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="showGroupModal = false">Close</button>
+            <button type="button" class="btn btn-primary" @click="updateGroups">Save changes</button>
+          </div>
         </div>
       </div>
-      <div class="col-md-6">
-        <div class="input-group">
-          <select v-model="groupToRemove" class="form-select">
-            <option value="">Select group to remove</option>
-            <option v-for="group in allGroups" :key="group" :value="group">{{ group }}</option>
-          </select>
-          <button class="btn btn-danger" @click="removeGroup">Remove Group</button>
-        </div>
-      </div>
     </div>
-
-    <button class="btn btn-success" @click="exportCSV">Export CSV</button>
   </div>
 </template>
 
 <script>
 import axios from 'axios';
+import debounce from 'lodash/debounce';
 
 export default {
+  name: 'App',
   data() {
     return {
       users: [],
       search: '',
-      departmentFilter: '',
+      selectedDepartment: '',
+      departments: [],
+      currentPage: 1,
+      itemsPerPage: 10,
       selectedUsers: [],
-      groupToAdd: '',
-      groupToRemove: '',
-      allSelected: false,
+      selectAll: false,
+      showGroupModal: false,
+      groupsToAdd: [],
+      groupsToRemove: [],
+      newGroup: '',
+      availableGroups: [],
     };
   },
   computed: {
     filteredUsers() {
       return this.users.filter(user => {
-        const searchMatch = this.search === '' ||
-          user.firstname.toLowerCase().includes(this.search.toLowerCase()) ||
-          user.lastname.toLowerCase().includes(this.search.toLowerCase()) ||
-          user.email.toLowerCase().includes(this.search.toLowerCase());
-
-        const departmentMatch = this.departmentFilter === '' ||
-          (user.departments && user.departments.includes(this.departmentFilter));
-
+        const searchMatch = user.firstname.toLowerCase().includes(this.search.toLowerCase()) ||
+                            user.lastname.toLowerCase().includes(this.search.toLowerCase()) ||
+                            user.email.toLowerCase().includes(this.search.toLowerCase()) ||
+                            user.departments.toLowerCase().includes(this.search.toLowerCase());
+        const departmentMatch = this.selectedDepartment === '' || user.departments.includes(this.selectedDepartment);
         return searchMatch && departmentMatch;
       });
     },
-    allGroups() {
-      const groups = new Set();
-      this.users.forEach(user => {
-        if (user.groups) {
-          user.groups.split(';').forEach(group => groups.add(group));
-        }
-      });
-      return Array.from(groups);
+    paginatedUsers() {
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      const end = start + this.itemsPerPage;
+      return this.filteredUsers.slice(start, end);
+    },
+    totalPages() {
+      return Math.ceil(this.filteredUsers.length / this.itemsPerPage);
+    },
+    visiblePages() {
+      let start = Math.max(1, this.currentPage - 2);
+      let end = Math.min(this.totalPages, start + 4);
+      start = Math.max(1, end - 4);
+      return Array.from({length: end - start + 1}, (_, i) => start + i);
+    },
+    currentGroups() {
+      return [...new Set(this.selectedUsers.flatMap(user => user.groups.split(';')))];
     },
   },
   methods: {
-    async uploadCSV(event) {
+    uploadCSV(event) {
       const file = event.target.files[0];
       const formData = new FormData();
       formData.append('file', file);
-      await axios.post('http://localhost:5000/upload', formData);
-      this.fetchUsers();
+      axios.post('/upload', formData)
+        .then(response => {
+          console.log(response.data.message);
+          this.getUsers();
+          this.getGroups();
+        })
+        .catch(error => {
+          console.error(error);
+        });
     },
-    async fetchUsers() {
-      const response = await axios.get(`http://localhost:5000/users?search=${this.search}&department=${this.departmentFilter}`);
-      this.users = response.data;
+    getUsers() {
+      axios.get('/users', {
+        params: {
+          search: this.search,
+          department: this.selectedDepartment,
+        },
+      })
+        .then(response => {
+          this.users = response.data;
+          this.departments = [...new Set(this.users.flatMap(user => user.departments.split(',')))];
+          this.resetPage();
+        })
+        .catch(error => {
+          console.error(error);
+        });
     },
-    async addGroup() {
-      if (!this.groupToAdd) return;
-      await axios.post('http://localhost:5000/update-groups', {
-        userIds: this.selectedUsers,
-        groupsToAdd: [this.groupToAdd],
-        groupsToRemove: [],
-      });
-      this.groupToAdd = '';
-      this.fetchUsers();
+    getGroups() {
+      axios.get('/groups')
+        .then(response => {
+          this.availableGroups = response.data;
+        })
+        .catch(error => {
+          console.error(error);
+        });
     },
-    async removeGroup() {
-      if (!this.groupToRemove) return;
-      await axios.post('http://localhost:5000/update-groups', {
-        userIds: this.selectedUsers,
-        groupsToAdd: [],
-        groupsToRemove: [this.groupToRemove],
-      });
-      this.groupToRemove = '';
-      this.fetchUsers();
+    filterUsers() {
+      this.getUsers();
     },
-    async exportCSV() {
-      const response = await axios.get('http://localhost:5000/export', { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'exported_users.csv');
-      document.body.appendChild(link);
-      link.click();
-    },
-    selectAll() {
-      if (this.allSelected) {
-        this.selectedUsers = this.filteredUsers.map(user => `${user.firstname}_${user.lastname}_${user.email}`);
-      } else {
-        this.selectedUsers = [];
+    changePage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
       }
     },
-  },
-  mounted() {
-    this.fetchUsers();
+    resetPage() {
+      this.currentPage = 1;
+    },
+    toggleSelectAll() {
+      this.selectedUsers = this.selectAll ? [...this.filteredUsers] : [];
+    },
+    updateGroups() {
+      const userIds = this.selectedUsers.map(user => `${user.firstname}_${user.lastname}_${user.email}`);
+      axios.post('/update-groups', {
+        userIds: userIds,
+        groupsToAdd: this.groupsToAdd,
+        groupsToRemove: this.groupsToRemove,
+      })
+        .then(response => {
+          console.log(response.data.message);
+          this.getUsers();
+          this.showGroupModal = false;
+          this.groupsToAdd = [];
+          this.groupsToRemove = [];
+        })
+        .catch(error => {
+          console.error(error);
+        });
+    },
+    addNewGroup() {
+      if (this.newGroup && !this.availableGroups.includes(this.newGroup)) {
+        this.availableGroups.push(this.newGroup);
+        this.groupsToAdd.push(this.newGroup);
+        this.newGroup = '';
+      }
+    },
+    exportCSV() {
+      axios.get('/export', { responseType: 'blob' })
+        .then(response => {
+          const blob = new Blob([response.data], { type: 'text/csv' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'exported_users.csv';
+          link.click();
+        })
+        .catch(error => {
+          console.error(error);
+        });
+    },
   },
   watch: {
-    search() {
-      this.fetchUsers();
-    },
-    departmentFilter() {
-      this.fetchUsers();
-    },
+    search: debounce(function() {
+      this.getUsers();
+    }, 300),
+  },
+  created() {
+    this.getUsers();
+    this.getGroups();
   },
 };
 </script>
+
+<style>
+#app {
+  margin-top: 20px;
+}
+.modal {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+</style>
