@@ -1,24 +1,23 @@
-function exportCSV:
-    filteredUsers = filter users where firstname, lastname, and email are not empty
-    proceed with CSV export logic using filteredUsers<template>
+<template>
   <div id="app" class="container">
     <h1>User Management</h1>
     <div class="mb-3">
-      <input type="file" @change="uploadCSV" />
+      <input type="file" @change="uploadUserData" accept=".xlsx" />
     </div>
     <div id="searcharea">
-      <label>Filter Users</label>
-      <div class="mb-3">
+      <div class="form-group">
         <input type="text" v-model="search" placeholder="Search by name, email, or department" class="form-control" />
       </div>
-      <div class="mb-3">
-        <select v-model="selectedDepartment" @change="filterUsers" class="form-control">
+      <div class="form-group">
+        <label>Sort Departments</label>
+        <select v-model="selectedDepartment" class="form-control">
           <option value="">All Departments</option>
           <option v-for="department in sortedDepartments" :key="department" :value="department">{{ department }}</option>
         </select>
       </div>
       <div class="form-group">
-        <select v-model="selectedGroup" id="groupFilter" class="form-control">
+        <label>Sort Available Groups</label>
+        <select v-model="selectedGroup" class="form-control">
           <option value="">All Groups</option>
           <option v-for="group in sortedAvailableGroups" :key="group" :value="group">{{ group }}</option>
         </select>
@@ -26,7 +25,7 @@ function exportCSV:
     </div>
     <div class="mb-3">
       <button @click="showGroupModal = true" class="btn btn-primary" :disabled="selectedUsers.length === 0">Manage Groups</button>
-      <button @click="exportCSV" class="btn btn-success ml-2">Export CSV</button>
+      <button @click="exportUserData" class="btn btn-success ml-2">Export UserData</button>
     </div>
     <table class="table">
       <thead>
@@ -113,7 +112,7 @@ export default {
   name: 'App',
   data() {
     return {
-      users: [],
+      users: [], // Initialize as an empty array
       search: '',
       selectedDepartment: '',
       departments: [],
@@ -130,6 +129,21 @@ export default {
       sortDirection: 'asc', // or 'desc'
       selectedGroup: '',
     };
+  },
+  async getUsers() {
+    try {
+      const response = await axios.get('/api/users', {
+        params: {
+          search: this.search,
+          department: this.selectedDepartment,
+        },
+      });
+      this.users = Array.isArray(response.data) ? response.data : [];
+      this.departments = [...new Set(this.users.flatMap(user => user.departments.split(',')))];
+      this.resetPage();
+    } catch (error) {
+      console.error(error);
+    }
   },
   computed: {
     filteredUsers() {
@@ -166,36 +180,40 @@ export default {
       let start = Math.max(1, this.currentPage - 2);
       let end = Math.min(this.totalPages, start + 4);
       start = Math.max(1, end - 4);
-      return Array.from({length: end - start + 1}, (_, i) => start + i);
+      return Array.from({ length: end - start + 1 }, (_, i) => start + i);
     },
     currentGroups() {
       return [...new Set(this.selectedUsers.flatMap(user => user.groups.split(';')))];
     },
   },
   methods: {
-    uploadCSV(event) {
+    async uploadUserData(event) {
       const file = event.target.files[0];
       const formData = new FormData();
       formData.append('file', file);
-      axios.post('/upload', formData)
-      .then(response => {
-        console.log(response.data.message);
-        this.getUsers();
-        this.getGroups();
-      })
-      .catch(error => {
-        console.error(error);
-      });
+      try {
+        const response = await axios.post('/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        console.log('Upload successful', response.data);
+        this.getUsers(); // Refresh users data after successful upload
+      } catch (error) {
+        console.error('Upload failed', error.response ? error.response.data : error);
+      }
     },
+
     getUsers() {
-      axios.get('/users', {
+      axios
+      .get('/users', {
         params: {
           search: this.search,
           department: this.selectedDepartment,
         },
       })
       .then(response => {
-        this.users = response.data;
+        this.users = Array.isArray(response.data) ? response.data : [];
         this.departments = [...new Set(this.users.flatMap(user => user.departments.split(',')))];
         this.resetPage();
       })
@@ -204,12 +222,14 @@ export default {
       });
     },
     getGroups() {
+      // Example API call
       axios.get('/groups')
       .then(response => {
-        this.availableGroups = response.data;
+        this.availableGroups = Array.isArray(response.data) ? response.data : [];
       })
       .catch(error => {
         console.error(error);
+        this.availableGroups = []; // Ensure it's reset to an array on error
       });
     },
     filterUsers() {
@@ -262,7 +282,8 @@ export default {
     },
     updateGroups() {
       const userIds = this.selectedUsers.map(user => `${user.firstname}_${user.lastname}_${user.email}`);
-      axios.post('/update-groups', {
+      axios
+      .post('/update-groups', {
         userIds: userIds,
         groupsToAdd: this.groupsToAdd,
         groupsToRemove: this.groupsToRemove,
@@ -285,8 +306,9 @@ export default {
         this.newGroup = '';
       }
     },
-    exportCSV() {
-      axios.get('/export', { responseType: 'blob' })
+    exportUserData() {
+      axios
+      .get('/export', { responseType: 'blob' })
       .then(response => {
         const blob = new Blob([response.data], { type: 'text/csv' });
         const link = document.createElement('a');
@@ -302,20 +324,21 @@ export default {
       this.selectedUsers = [];
       this.selectAll = false;
     },
-  },
-  watch: {
-    search: debounce(function() {
-      this.filterUsers();
-    }, 300),
-    selectedDepartment() {
-      this.filterUsers();
-    }
-  },
-  created() {
-    this.getUsers();
-    this.getGroups();
+    watch: {
+      search: debounce(function () {
+        this.filterUsers();
+      }, 300),
+      selectedDepartment() {
+        this.filterUsers();
+      },
+    },
+    created() {
+      this.getUsers();
+      this.getGroups();
+    },
   },
 };
+
 </script>
 
 <style>
@@ -334,3 +357,4 @@ thead th {
   cursor: pointer;
 }
 </style>
+s

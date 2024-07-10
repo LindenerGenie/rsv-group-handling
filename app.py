@@ -95,26 +95,6 @@ def export_xlsx():
         # Log the exception e
         return jsonify({"error": "An error occurred while exporting users."}), 500
 
-@app.route('/export-csv', methods=['GET'])
-def export_csv():
-    try:
-        filtered_users = [user for user in users_data if user.get('firstname') and user.get('lastname') and user.get('email')]
-        csvContent = "data:text/csv;charset=utf-8,"
-        csvContent += "First Name,Last Name,Email\n"  # CSV Header
-        for user in filtered_users:
-            row = f"{user.get('firstname')},{user.get('lastname')},{user.get('email')}"
-            csvContent += row + "\n"
-        encodedUri = encodeURI(csvContent)
-        link = document.createElement("a")
-        link.setAttribute("href", encodedUri)
-        link.setAttribute("download", "exported_users.csv")
-        document.body.appendChild(link)  # Required for FF
-        link.click()  # Trigger download
-        return jsonify(success=True), 200
-    except Exception as e:
-        # Log the exception e
-        return jsonify({"error": "An error occurred while exporting users."}), 500
-
 @app.route('/groups', methods=['GET'])
 def get_groups():
     all_groups = set()
