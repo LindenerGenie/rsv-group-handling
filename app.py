@@ -28,7 +28,7 @@ def upload_xlsx():
     global users_data
     users_data = []
     # Include 'created' and 'groups' in the expected keys
-    default_keys = ['firstname', 'lastname', 'email', 'departments', 'created', 'groups']  # Updated expected keys
+    required_fields = ['firstname', 'lastname', 'email', 'departments', 'lastModified', 'groups', 'profil_id']  # Updated expected keys
 
     # Read the first row to get column headers
     headers = [cell for cell in next(ws.iter_rows(min_row=1, max_row=1, values_only=True))]
@@ -37,10 +37,10 @@ def upload_xlsx():
     header_index = {header: index for index, header in enumerate(headers)}
 
     for row in ws.iter_rows(min_row=2, values_only=True):
-        user = {key: '' for key in default_keys}  # Initialize with default keys and empty values
+        user = {key: '' for key in required_fields}  # Initialize with default keys and empty values
 
         # Update user dictionary with values from row, using header_index for correct mapping
-        for key in default_keys:
+        for key in required_fields:
             if key in header_index:  # Check if the key exists in the header
                 value_index = header_index[key]
                 user[key] = row[value_index] if value_index < len(row) else ''
@@ -50,13 +50,13 @@ def upload_xlsx():
 
 @app.route('/export', methods=['GET'])
 def export_xlsx():
-    global default_keys
     try:
         wb = Workbook()
         ws = wb.active
-        export_keys = ['firstname', 'lastname', 'email', 'groups']  # Updated export keys
+        export_keys = ['profil_id','firstname', 'lastname', 'email', 'groups']  # columns to export
         ws.append(export_keys)  # Write the column headers
-        filtered_users = [user for user in users_data if user.get('firstname') and user.get('lastname') and user.get('email')]
+        modified_users = [user for user in users_data if user.get('groups_modified')]
+        filtered_users = [user for user in modified_users if user.get('firstname') and user.get('lastname') and user.get('email')]
         for user in filtered_users:
             # Ensure data is correctly formatted for Excel
             row = [user.get(col, '') for col in export_keys]
@@ -100,6 +100,7 @@ def update_groups():
             current_groups.update(groups_to_add)
             current_groups.difference_update(groups_to_remove)
             user['groups'] = ';'.join(sorted(current_groups))
+            user['groups_modified'] = True  # Mark the user as modified
 
     return jsonify({"message": "Groups updated successfully"})
 

@@ -12,7 +12,7 @@ As a admin I want to have the ability to edit groups for a user to assign additi
 As a admin I want to have a listing of user data from the csv to see which groups departments are currently assigned to users
 As a admin I want to filter the listing by lastname, email, firstname, department also allowing for fuzzy search.
 As a admin I want to select a subset of listed users to add or remove groups to admister groups based on department or indivitual sub groups
-As a admin I want to export the edited data as csv to import it to an external system. All columns of the input data (relevant ones and passive columns) needs to be part of the export in the same order of columns. for technical reasons the csv file contains a lot of columns that are not relevant for the application. They still needs to be part of the exported file in correct column order.
+As a admin I want to export the edited data as csv to import it to an external system. Only firstname, lastname, email and group columns should be expected. Only users that have updated groups should be exported.
 As a admin I want to be able to when adding groups to a user selection to be able to create new groups on the fly while still be able to select groups that are already present in the data.
 as a datenschutzbeauftrager sollen keine Daten persistent gespeichert werden.
 As a deployment manager I want to have a docker deployable web application for this application to have it easy to deploy it to nontechnical admins.
