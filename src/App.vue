@@ -34,9 +34,9 @@
           <th @click="sortUsers('firstname')">First Name</th>
           <th @click="sortUsers('lastname')">Last Name</th>
           <th @click="sortUsers('email')">Email</th>
-          <th @click="sortUsers('created')">Created</th>
           <th @click="sortUsers('departments')">Departments</th>
           <th @click="sortUsers('groups')">Groups</th>
+          <th @click="sortUsers('lastModified')">Last Modified (in App)</th>
         </tr>
       </thead>
       <tbody>
@@ -45,9 +45,9 @@
           <td>{{ user.firstname }}</td>
           <td>{{ user.lastname }}</td>
           <td>{{ user.email }}</td>
-          <td>{{ formatCreatedDate(user.created) }}</td>
           <td>{{ user.departments }}</td>
           <td>{{ user.groups }}</td>
+          <td>{{ formatCreatedDate(user.lastModified) }}</td>
         </tr>
       </tbody>
     </table>
@@ -76,12 +76,13 @@
             </button>
           </div>
           <div class="modal-body">
+            <p>Use this dialog to manage groups for selected users. You can add new groups, remove existing groups, and assign users to different groups.</p>
             <div class="form-group">
               <div class="d-flex">
                 <div class="mr-2">
                   <label>Add Groups:</label>
                   <select v-model="groupsToAdd" multiple class="form-control">
-                    <option v-for="group in sortedAvailableGroups" :key="group" :value="group">{{ group }}</option>
+                    <option v-for="group in groupsAvailableForAddition" :key="group" :value="group">{{ group }}</option>
                   </select>
                 </div>
                 <div class="ml-auto">
@@ -94,7 +95,7 @@
             <div class="form-group">
               <label>Remove Groups:</label>
               <select v-model="groupsToRemove" multiple class="form-control">
-                <option v-for="group in sortedCurrentGroups" :key="group" :value="group">{{ group }}</option>
+                <option v-for="group in groupsAvailableForRemoval" :key="group" :value="group">{{ group }}</option>
               </select>
             </div>
           </div>
@@ -175,6 +176,19 @@ export default {
     sortedAvailableGroups() {
       return this.availableGroups.sort();
     },
+    groupsAvailableForRemoval() {
+      const selectedGroups = this.selectedUsers.flatMap(user => user.groups.split(';'));
+      return [...new Set(selectedGroups)].filter(group => this.currentGroups.includes(group));
+    },
+    groupsAvailableForAddition() {
+      const selectedGroups = this.selectedUsers.flatMap(user => user.groups.split(';'));
+      const allGroups = this.availableGroups;
+      const unselectedGroups = allGroups.filter(group => !selectedGroups.includes(group));
+      console.log('Selected Groups:', selectedGroups);
+      console.log('All Groups:', allGroups);
+      console.log('Unselected Groups:', unselectedGroups);
+      return unselectedGroups;
+    },
     sortedCurrentGroups() {
       // Assuming `currentGroups` is a data property that holds the groups a user currently has.
       // This will also need to be computed dynamically similar to `availableGroups`.
@@ -212,14 +226,14 @@ export default {
       axios
       .get('/export', { responseType: 'arraybuffer' })
       .then(response => {
-      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'exported_users.xlsx';
-      link.click();
+        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'exported_users.xlsx';
+        link.click();
       })
       .catch(error => {
-      console.error(error);
+        console.error(error);
       });
     },
     getUsers() {
@@ -257,9 +271,16 @@ export default {
     },
 
     // Method to format the 'created' date
+    // Method to format the 'created' or 'lastModified' date
     formatCreatedDate(dateString) {
       if (!dateString) return ''; // Return empty if dateString is empty
-      const [day, month, year] = dateString.split('.'); // Assuming the original format is 'yyyy-mm-dd'
+      // Check if dateString is in ISO 8601 format
+      if (dateString.includes('T')) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('de-DE'); // Converts to 'dd.mm.yyyy'. Change 'de-DE' as needed
+      }
+      // Assuming the original format is 'dd.mm.yyyy'
+      const [day, month, year] = dateString.split('.');
       return `${day}.${month}.${year}`; // Convert to 'dd.mm.yyyy'
     },
 
@@ -272,11 +293,11 @@ export default {
         this.sortColumn = column;
         this.sortDirection = 'asc';
       }
-      if (column === 'created') {
+      if (column === 'lastModified') {
         this.users.sort((a, b) => {
           // Parse the dates from 'dd.mm.yyyy' to 'yyyy-mm-dd' for correct comparison
-          const dateA = a.created ? new Date(a.created.split('.').reverse().join('-')) : new Date(0);
-          const dateB = b.created ? new Date(b.created.split('.').reverse().join('-')) : new Date(0);
+          const dateA = a.lastModified ? new Date(a.lastModified.split('.').reverse().join('-')) : new Date(0);
+          const dateB = b.lastModified ? new Date(b.lastModified.split('.').reverse().join('-')) : new Date(0);
           return this.sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
         });
       } else {
