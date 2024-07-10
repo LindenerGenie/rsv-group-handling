@@ -48,6 +48,26 @@ def upload_xlsx():
         users_data.append(user)
     return jsonify(success=True), 200
 
+@app.route('/export', methods=['GET'])
+def export_xlsx():
+    global default_keys
+    try:
+        wb = Workbook()
+        ws = wb.active
+        export_keys = ['firstname', 'lastname', 'email', 'groups']  # Updated export keys
+        ws.append(export_keys)  # Write the column headers
+        filtered_users = [user for user in users_data if user.get('firstname') and user.get('lastname') and user.get('email')]
+        for user in filtered_users:
+            # Ensure data is correctly formatted for Excel
+            row = [user.get(col, '') for col in export_keys]
+            ws.append(row)
+        filename = "exported_users.xlsx"
+        wb.save(filename)
+        return send_file(filename, as_attachment=True, attachment_filename=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as e:
+        logging.error("An error occurred while exporting users: %s", str(e))  # Log the exception
+        return jsonify({"error": "An error occurred while exporting users."}), 500
+
 @app.route('/users', methods=['GET'])
 def get_users():
     search = request.args.get('search', '').lower()
@@ -82,24 +102,6 @@ def update_groups():
             user['groups'] = ';'.join(sorted(current_groups))
 
     return jsonify({"message": "Groups updated successfully"})
-
-@app.route('/export', methods=['GET'])
-def export_xlsx():
-    try:
-        wb = Workbook()
-        ws = wb.active
-        ws.append(column_order)  # Assuming column_order contains the headers
-        filtered_users = [user for user in users_data if user.get('firstname') and user.get('lastname') and user.get('email')]
-        for user in filtered_users:
-            # Ensure data is correctly formatted for Excel
-            row = [user.get(col, '') for col in column_order]
-            ws.append(row)
-        filename = "exported_users.xlsx"
-        wb.save(filename)
-        return send_file(filename, as_attachment=True, attachment_filename=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    except Exception as e:
-        logging.error("An error occurred while exporting users: %s", str(e))  # Log the exception
-        return jsonify({"error": "An error occurred while exporting users."}), 500
 
 @app.route('/groups', methods=['GET'])
 def get_groups():
