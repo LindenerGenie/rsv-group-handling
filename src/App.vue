@@ -77,15 +77,19 @@
           </div>
           <div class="modal-body">
             <div class="form-group">
-              <label>Add Groups:</label>
-              <select v-model="groupsToAdd" multiple class="form-control">
-                <option v-for="group in sortedAvailableGroups" :key="group" :value="group">{{ group }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>New Group:</label>
-              <input v-model="newGroup" class="form-control" placeholder="Enter new group name" />
-              <button @click="addNewGroup" class="btn btn-secondary mt-2">Add New Group</button>
+              <div class="d-flex">
+                <div class="mr-2">
+                  <label>Add Groups:</label>
+                  <select v-model="groupsToAdd" multiple class="form-control">
+                    <option v-for="group in sortedAvailableGroups" :key="group" :value="group">{{ group }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label>New Group:</label>
+                  <input v-model="newGroup" class="form-control" placeholder="Enter new group name" />
+                  <button @click="addNewGroup" class="btn btn-secondary mt-2">Add New Group</button>
+                </div>
+              </div>
             </div>
             <div class="form-group">
               <label>Remove Groups:</label>
@@ -132,7 +136,7 @@ export default {
   },
   async getUsers() {
     try {
-      const response = await axios.get('/api/users', {
+      const response = await axios.get('/users', {
         params: {
           search: this.search,
           department: this.selectedDepartment,
@@ -199,6 +203,7 @@ export default {
         });
         console.log('Upload successful', response.data);
         this.getUsers(); // Refresh users data after successful upload
+        this.getGroups(); // Refresh groups data after successful upload
       } catch (error) {
         console.error('Upload failed', error.response ? error.response.data : error);
       }
@@ -234,6 +239,7 @@ export default {
     },
     filterUsers() {
       this.getUsers();
+      this.getGroups();
       this.clearSelections();
     },
 
