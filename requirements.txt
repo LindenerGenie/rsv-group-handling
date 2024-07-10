@@ -2,5 +2,5 @@ Flask==2.0.3
 Werkzeug==2.0.3
 flask-cors==3.0.10
 gunicorn
-openpyxl
+openpyxl==3.1.5
 pandas

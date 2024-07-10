@@ -71,7 +71,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Manage Groups</h5>
-            <button type="button" class="close" @click="showGroupModal = false">
+            <button type="button" class="close align-right" @click="showGroupModal = false">
               <span>&times;</span>
             </button>
           </div>
@@ -84,7 +84,7 @@
                     <option v-for="group in sortedAvailableGroups" :key="group" :value="group">{{ group }}</option>
                   </select>
                 </div>
-                <div>
+                <div class="ml-auto">
                   <label>New Group:</label>
                   <input v-model="newGroup" class="form-control" placeholder="Enter new group name" />
                   <button @click="addNewGroup" class="btn btn-secondary mt-2">Add New Group</button>
@@ -208,7 +208,20 @@ export default {
         console.error('Upload failed', error.response ? error.response.data : error);
       }
     },
-
+    exportUserData() {
+      axios
+      .get('/export', { responseType: 'arraybuffer' })
+      .then(response => {
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'exported_users.xlsx';
+      link.click();
+      })
+      .catch(error => {
+      console.error(error);
+      });
+    },
     getUsers() {
       axios
       .get('/users', {
@@ -312,20 +325,6 @@ export default {
         this.newGroup = '';
       }
     },
-    exportUserData() {
-      axios
-      .get('/export', { responseType: 'blob' })
-      .then(response => {
-        const blob = new Blob([response.data], { type: 'text/csv' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'exported_users.csv';
-        link.click();
-      })
-      .catch(error => {
-        console.error(error);
-      });
-    },
     clearSelections() {
       this.selectedUsers = [];
       this.selectAll = false;
@@ -362,5 +361,8 @@ export default {
 thead th {
   cursor: pointer;
 }
+.align-right
+{
+  text-align: right;
+}
 </style>
-s

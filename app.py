@@ -2,8 +2,7 @@ from flask import Flask, send_file, send_from_directory, jsonify, request
 from flask_cors import CORS
 from openpyxl import Workbook, load_workbook
 import pandas as pd
-import csv
-import io
+import logging
 import os
 
 app = Flask(__name__, static_folder='dist')
@@ -21,6 +20,11 @@ def upload_xlsx():
         return 'No selected file', 400
     wb = load_workbook(file)
     ws = wb.active
+
+    # Initialize column_order with the first row which contains the column names
+    global column_order
+    column_order = [cell.value for cell in ws[1]]
+
     global users_data
     users_data = []
     # Include 'created' and 'groups' in the expected keys
@@ -87,12 +91,14 @@ def export_xlsx():
         ws.append(column_order)  # Assuming column_order contains the headers
         filtered_users = [user for user in users_data if user.get('firstname') and user.get('lastname') and user.get('email')]
         for user in filtered_users:
-            ws.append([user.get(col, '') for col in column_order])
+            # Ensure data is correctly formatted for Excel
+            row = [user.get(col, '') for col in column_order]
+            ws.append(row)
         filename = "exported_users.xlsx"
         wb.save(filename)
         return send_file(filename, as_attachment=True, attachment_filename=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as e:
-        # Log the exception e
+        logging.error("An error occurred while exporting users: %s", str(e))  # Log the exception
         return jsonify({"error": "An error occurred while exporting users."}), 500
 
 @app.route('/groups', methods=['GET'])
